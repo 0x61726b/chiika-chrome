@@ -1,2 +1,2 @@
 # chiika-chrome
-Chrome extension for Chiika to help with stream detection.
+This repo is a Chrome extension that transmits tab events to Chiika locally via WebSockets.
