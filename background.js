@@ -11,10 +11,7 @@ function isArray(obj) {
   return Array.isArray(obj);
 }
 
-function onConnectedToChiika() {
-  console.log(ws);
-  ws.send('chrome-ready');
-}
+
 function onDisconnect() {
   console.log("Connection with Chiika has been lost.");
 }
@@ -35,7 +32,6 @@ function onChiikaRequest(data) {
 
 ws.onopen = function(event) {
   console.log("connection open");
-  onConnectedToChiika()
 };
 ws.onclose = function() {
   onDisconnect();
@@ -77,11 +73,11 @@ function tabMessageBody(state,tab) {
 function send(state,tabs) {
   var string = state + " ";
   if(isArray(tabs)) {
-    string += "["
+    var lesser = []
     tabs.forEach(function(v) {
-      string += tabDataToJson(v);
+      lesser.push({ title: v.title, url: v.url });
     })
-    string += "]"
+    string += JSON.stringify(lesser);
   }
   else {
     string += tabDataToJson(tabs);
@@ -91,10 +87,11 @@ function send(state,tabs) {
   }
 }
 
+var tabs = [];
+
 chrome.tabs.onCreated.addListener(function(tab) {
   tabToCommon(tab.id).then(function(tabObj) {
     console.log("onCreated - " + tabObj.title + " - " + tabObj.url);
-
     send('tab-created',tabObj);
   })
 });
@@ -103,7 +100,14 @@ chrome.tabs.onActivated.addListener(function(activeInfo) {
   tabToCommon(activeInfo.tabId).then(function(tabObj) {
     console.log("onActivated - " + tabObj.title + " - " + tabObj.url);
     send('tab-activated',tabObj);
+    tabs[tabObj.id] = tabObj;
   })
+});
+chrome.tabs.onRemoved.addListener(function(tabId,removeInfo) {
+  var removedTab = tabs[tabId];
+  console.log("onRemoved - " + removedTab.title + " - " + removedTab.url);
+  send('tab-closed',removedTab);
+  delete removedTab;
 });
 
 chrome.tabs.onUpdated.addListener(function(tabId,changeInfo) {
@@ -116,6 +120,7 @@ chrome.tabs.onUpdated.addListener(function(tabId,changeInfo) {
     tabToCommon(tabId).then(function(tabObj) {
       console.log("onUpdated-complete " + tabObj.title + "- " + tabObj.url);
       send('tab-updated',tabObj);
+      tabs[tabObj.id] = tabObj;
     })
   }
 });
